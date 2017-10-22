@@ -1,6 +1,6 @@
 FROM openjdk:8-jdk
 
-RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git sudo curl && rm -rf /var/lib/apt/lists/*
 
 ARG user=jenkins
 ARG group=jenkins
@@ -16,7 +16,9 @@ ENV JENKINS_SLAVE_AGENT_PORT ${agent_port}
 # If you bind mount a volume from the host or a data container, 
 # ensure you use the same uid
 RUN groupadd -g ${gid} ${group} \
-    && useradd -d "$JENKINS_HOME" -u ${uid} -g ${gid} -m -s /bin/bash ${user}
+    && useradd -d "$JENKINS_HOME" -u ${uid} -g ${gid} -m -s /bin/bash ${user} 
+
+RUN echo "jenkins ALL=NOPASSWD: ALL" >> /etc/sudoers
 
 # Jenkins home directory is a volume, so configuration and build history 
 # can be persisted and survive image upgrades
@@ -63,6 +65,25 @@ EXPOSE ${agent_port}
 
 ENV COPY_REFERENCE_FILE_LOG $JENKINS_HOME/copy_reference_file.log
 
+USER root
+RUN apt-get update
+RUN apt-get install -y \
+apt-transport-https \
+ca-certificates \
+curl \
+gnupg2 \
+software-properties-common
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+RUN add-apt-repository \
+"deb [arch=amd64] https://download.docker.com/linux/debian \
+$(lsb_release -cs) \
+stable"
+RUN apt-get update
+RUN apt-get install -y docker-ce
+
+RUN echo "sudo chown jenkins /var/run/docker.sock" > /etc/init.d/start \
+	update-rc.d start
+
 USER ${user}
 
 COPY jenkins-support /usr/local/bin/jenkins-support
@@ -72,3 +93,4 @@ ENTRYPOINT ["/bin/tini", "--", "/usr/local/bin/jenkins.sh"]
 # from a derived Dockerfile, can use `RUN plugins.sh active.txt` to setup /usr/share/jenkins/ref/plugins from a support bundle
 COPY plugins.sh /usr/local/bin/plugins.sh
 COPY install-plugins.sh /usr/local/bin/install-plugins.sh
+

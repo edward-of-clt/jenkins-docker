@@ -1,3 +1,11 @@
+# Ark Usage
+
+To use this and allow docker-in-docker inception, use this command:
+
+```
+docker run -v ~/persistent/jenkins/:/var/jenkins_home/ -v /var/run/docker.sock:/var/run/docker.sock -p 80:8080 -p 50000 jenkins-docker
+```
+
 # Official Jenkins Docker image
 
 The Jenkins Continuous Integration and Delivery server.
